@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slide Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --orange:#FF5100; --warmgray:#6F6259; --brown:#502C1E; --sky:#65B2E8;
+    --black:#101820; --white:#FFFFFF; --highlight:#FFE7B3; --hairline:#DDD9D3;
+    --bggray:#F5F2ED; --boxgray:#EFEAE3; --bgorange:#FFE7DA;
+    --mono:'Space Mono',monospace; --sans:'Noto Sans KR',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--white);color:var(--black);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  button{font-family:inherit;cursor:pointer}
+  input,textarea,select{font-family:inherit}
+
+  /* ===== TOP BAR ===== */
+  .topbar{display:flex;align-items:center;justify-content:space-between;
+    padding:18px 32px;border-bottom:2px solid var(--orange)}
+  .brand{font-weight:900;font-size:20px;letter-spacing:1px}
+  .brand .mark{color:var(--orange)}
+  .topbar .role{font-family:var(--mono);font-size:11px;color:var(--warmgray);letter-spacing:1px}
+
+  /* ===== GATE (invite) ===== */
+  #gate{position:fixed;inset:0;background:var(--white);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:24px}
+  .gate-card{max-width:440px;width:100%}
+  .gate-card .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:3px;
+    color:var(--orange);margin-bottom:14px}
+  .gate-card h1{font-size:34px;font-weight:900;line-height:1.15;margin-bottom:14px}
+  .gate-card p{font-size:14px;color:var(--warmgray);line-height:1.7;margin-bottom:24px}
+  .gate-card .field{margin-bottom:14px}
+  .gate-card label{display:block;font-family:var(--mono);font-size:11px;
+    letter-spacing:1px;color:var(--warmgray);margin-bottom:6px}
+  .gate-card input{width:100%;padding:13px 14px;border:1.5px solid var(--hairline);
+    border-radius:0;font-size:14px;background:var(--bggray)}
+  .gate-card input:focus{outline:none;border-color:var(--orange);background:var(--white)}
+  .gate-msg{font-size:12px;margin-top:10px;min-height:18px}
+  .gate-msg.err{color:var(--orange)}
+  .gate-msg.ok{color:#2C7A3F}
+
+  /* ===== LAYOUT ===== */
+  .wrap{display:grid;grid-template-columns:400px 1fr;min-height:calc(100vh - 61px)}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{border-right:1px solid var(--hairline);padding:26px 28px;overflow-y:auto;
+    max-height:calc(100vh - 61px)}
+  @media(max-width:900px){.panel{max-height:none;border-right:none;border-bottom:1px solid var(--hairline)}}
+  .stage{padding:26px 28px;background:var(--bggray);overflow-y:auto;max-height:calc(100vh - 61px)}
+  @media(max-width:900px){.stage{max-height:none}}
+
+  .sec-title{font-family:var(--mono);font-size:11px;letter-spacing:2px;color:var(--orange);
+    margin:22px 0 12px;font-weight:700}
+  .sec-title:first-child{margin-top:0}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:700;margin-bottom:5px}
+  .field .hint{font-size:11px;color:var(--warmgray);margin-bottom:6px;line-height:1.5}
+  .field input[type=text],.field textarea,.field select{width:100%;padding:10px 12px;
+    border:1.5px solid var(--hairline);font-size:13px;background:var(--white);border-radius:0}
+  .field textarea{min-height:78px;resize:vertical;line-height:1.6}
+  .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--orange)}
+
+  .radiorow{display:flex;gap:8px;flex-wrap:wrap}
+  .radiorow label{flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;
+    padding:9px 6px;border:1.5px solid var(--hairline);font-size:12px;font-weight:700;
+    cursor:pointer;text-align:center;user-select:none}
+  .radiorow input{display:none}
+  .radiorow input:checked + span{color:var(--white)}
+  .radiorow label:has(input:checked){background:var(--orange);border-color:var(--orange);color:var(--white)}
+
+  .layoutpick{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px}
+  .layoutpick label{padding:10px 4px;border:1.5px solid var(--hairline);text-align:center;
+    cursor:pointer;font-size:12px;font-weight:700;user-select:none}
+  .layoutpick input{display:none}
+  .layoutpick label:has(input:checked){background:var(--black);border-color:var(--black);color:var(--white)}
+  .layoutpick .sub{display:block;font-family:var(--mono);font-size:9px;color:var(--warmgray);margin-top:2px;font-weight:400}
+  .layoutpick label:has(input:checked) .sub{color:var(--bgorange)}
+
+  .btn{display:block;width:100%;padding:15px;background:var(--orange);color:var(--white);
+    border:none;font-size:15px;font-weight:900;letter-spacing:1px;margin-top:22px;
+    transition:transform .06s}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{background:var(--hairline);color:var(--warmgray);cursor:not-allowed}
+  .btn.ghost{background:var(--white);color:var(--black);border:1.5px solid var(--black);margin-top:10px}
+
+  .notice{font-size:11px;color:var(--warmgray);line-height:1.6;margin-top:16px;
+    padding:12px;background:var(--bgorange);border-left:3px solid var(--orange)}
+
+  /* ===== STAGE ===== */
+  .stage-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .stage-head h2{font-size:16px;font-weight:900}
+  .stage-head .tag{font-family:var(--mono);font-size:10px;letter-spacing:1px;color:var(--warmgray)}
+  .previews{display:flex;flex-direction:column;gap:20px}
+  .preview-card{background:var(--white);border:1px solid var(--hairline);box-shadow:0 2px 12px rgba(16,24,32,.06)}
+  .preview-card .cap{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;border-bottom:1px solid var(--hairline)}
+  .preview-card .cap .name{font-weight:700;font-size:13px}
+  .preview-card .cap .dl{font-family:var(--mono);font-size:11px;color:var(--orange);
+    font-weight:700;background:none;border:1px solid var(--orange);padding:5px 10px}
+  .preview-card .cap .dl:active{background:var(--orange);color:var(--white)}
+  .preview-card .render{width:100%;aspect-ratio:13.3/7.5;position:relative;overflow:hidden}
+  .placeholder{display:flex;align-items:center;justify-content:center;height:100%;
+    color:var(--warmgray);font-size:13px;text-align:center;padding:40px}
+
+  /* mini slide (HTML preview mirror of pptx) */
+  .mini{position:absolute;inset:0;font-size:0.72vw;background:var(--white)}
+  @media(max-width:900px){.mini{font-size:1.4vw}}
+
+  .invite-modal{position:fixed;inset:0;background:rgba(16,24,32,.55);z-index:200;
+    display:none;align-items:center;justify-content:center;padding:24px}
+  .invite-modal.show{display:flex}
+  .invite-box{background:var(--white);max-width:460px;width:100%;padding:28px}
+  .invite-box h3{font-size:18px;font-weight:900;margin-bottom:8px}
+  .invite-box p{font-size:13px;color:var(--warmgray);line-height:1.6;margin-bottom:16px}
+  .invite-link{display:flex;gap:8px;margin-bottom:8px}
+  .invite-link input{flex:1;padding:11px;border:1.5px solid var(--hairline);font-family:var(--mono);font-size:11px}
+  .invite-link button{padding:11px 16px;background:var(--black);color:var(--white);border:none;font-weight:700;font-size:12px}
+  .invite-box .close{margin-top:14px;background:none;border:none;color:var(--warmgray);font-size:12px;text-decoration:underline}
+  .invite-box .warn{font-size:11px;color:var(--orange);margin-top:10px;line-height:1.5}
+
+  /* ===== SHARED DATA SOURCE ===== */
+  .ds-status{font-size:11px;line-height:1.5;padding:9px 11px;border:1.5px solid var(--hairline);
+    margin-bottom:8px}
+  .ds-status.ok{border-color:#2C7A3F;color:#2C7A3F;background:#F0F7F1}
+  .ds-status.warn{border-color:var(--orange);color:var(--orange);background:var(--bgorange)}
+  .ds-status.loading{color:var(--warmgray)}
+  .ds-config{display:flex;flex-direction:column;gap:6px}
+  .ds-config input,.ds-config textarea{padding:8px 10px;border:1.5px solid var(--hairline);
+    font-size:11px;background:var(--white);font-family:var(--mono)}
+  .ds-config input:focus,.ds-config textarea:focus{outline:none;border-color:var(--orange)}
+  .ds-config textarea{min-height:70px;resize:vertical;line-height:1.5}
+  .ds-config .row{display:flex;gap:6px}
+  .ds-config .row button{flex:1;padding:8px;font-size:11px;font-weight:700;
+    border:1.5px solid var(--black);background:var(--white);color:var(--black)}
+  .ds-config .row button:active{background:var(--black);color:var(--white)}
+
+  /* ===== MATCH LIST (actives ↔ shared data) ===== */
+  .match-list{margin-top:8px;display:flex;flex-direction:column;gap:5px}
+  .match-row{display:flex;align-items:flex-start;gap:8px;padding:7px 9px;font-size:11px;
+    border-left:3px solid var(--hairline);background:var(--bggray);line-height:1.4}
+  .match-row.hit{border-left-color:#2C7A3F}
+  .match-row.miss{border-left-color:var(--orange)}
+  .match-row .ic{font-weight:700;flex-shrink:0}
+  .match-row.hit .ic{color:#2C7A3F}
+  .match-row.miss .ic{color:var(--orange)}
+  .match-row .mn{font-weight:700}
+  .match-row .mm{color:var(--warmgray);display:block;margin-top:1px}
+  .match-row .ms{font-family:var(--mono);font-size:9px;color:var(--orange);display:block;margin-top:1px}
+  .match-row .add{background:none;border:1px solid var(--orange);color:var(--orange);
+    font-size:9px;font-weight:700;padding:3px 7px;margin-left:auto;flex-shrink:0}
+  code{font-family:var(--mono);font-size:10px;background:var(--boxgray);padding:1px 4px}
+
+  /* ===== REFERENCE MATERIAL ===== */
+  .ref-drop{border:1.5px dashed var(--hairline);padding:14px;text-align:center;font-size:12px;
+    color:var(--warmgray);cursor:pointer;margin-bottom:8px;line-height:1.5}
+  .ref-drop:hover{border-color:var(--orange);color:var(--black)}
+  .ref-drop b{color:var(--orange)}
+  .ref-status{font-size:11px;line-height:1.5;margin-bottom:8px;min-height:0}
+  .ref-status.ok{color:#2C7A3F}
+  .ref-status.warn{color:var(--orange)}
+  .ref-extract{padding:9px;background:var(--bgorange);border-left:3px solid var(--orange);
+    font-size:11px;line-height:1.6;margin-bottom:8px;display:none}
+  .ref-extract.show{display:block}
+  .ref-extract button{margin-top:6px;padding:6px 12px;background:var(--orange);color:var(--white);
+    border:none;font-size:11px;font-weight:700}
+</style>
+</head>
+<body>
+
+<!-- ============ INVITE GATE ============ -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="eyebrow">INVITE ONLY</div>
+    <h1>컨셉 슬라이드<br>스튜디오</h1>
+    <p>화장품 제품 brief를 입력하면 A / B / C 세 가지 레이아웃의 컨셉 제안 슬라이드를 <b>.pptx</b>로 즉시 생성합니다. 접근하려면 초대 코드가 필요합니다.</p>
+    <div class="field">
+      <label>INVITE CODE</label>
+      <input id="inviteInput" type="text" placeholder="예: CL-xxxxxxxx" autocomplete="off">
+    </div>
+    <button class="btn" style="margin-top:6px" onclick="tryEnter()">입장하기</button>
+    <div id="gateMsg" class="gate-msg"></div>
+    <p style="margin-top:20px;font-size:11px">
+      코드가 없으신가요? 관리자에게 1회용 초대 링크를 요청하세요.<br>
+      <a href="#" onclick="ownerEnter();return false;" style="color:var(--orange);font-weight:700">관리자 최초 입장 →</a>
+    </p>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="topbar">
+  <div class="brand"><span class="mark">S</span>lide Studio</div>
+  <div class="role" id="roleTag">GUEST</div>
+</div>
+
+<div class="wrap">
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <div class="sec-title">01 · 제품 BRIEF (필수)</div>
+    <div class="field">
+      <div class="hint">한 줄만 줘도 빈 슬롯 없이 전 영역을 채웁니다.</div>
+      <textarea id="brief" placeholder="예: 저자극 레티놀을 적용한 데일리 탄력·주름 개선 안티에이징 크림. 중점도, 촉촉한 마무리."></textarea>
+    </div>
+
+    <div class="sec-title">02 · 제품명 / 샘플명 (선택)</div>
+    <div class="field">
+      <input id="pname" type="text" placeholder="비우면 자동 생성 (예: Daily Reset Retinol Cream)">
+    </div>
+
+    <div class="sec-title">03 · 원료 자료 (공유)</div>
+    <div class="field">
+      <div class="hint">GitHub의 <code>ingredients.json</code>을 읽어 모두가 같은 자료를 공유합니다. 성분란에 원료명을 치면 이 자료와 자동 대조됩니다.</div>
+      <div class="ds-status" id="dsStatus">자료 불러오는 중…</div>
+      <div class="ds-config" id="dsConfig">
+        <input id="dsUrl" type="text" placeholder="ingredients.json 주소 (선택 · 비우면 같은 폴더에서 자동 로드)">
+        <div class="row">
+          <button onclick="reloadData()">주소에서 불러오기</button>
+          <button onclick="toggleDsPaste()">JSON 붙여넣기</button>
+        </div>
+        <textarea id="dsPaste" placeholder='{"ingredients":[{"name":"...","mech":"...","src":"..."}]}' style="display:none"></textarea>
+        <button id="dsPasteBtn" onclick="loadPasted()" style="display:none">붙여넣은 JSON 적용</button>
+      </div>
+    </div>
+
+    <div class="sec-title">04 · 참고자료 (선택 · 일회성)</div>
+    <div class="field">
+      <div class="hint">공유 자료에 없는 원료를 그때그때 추출. TDS·브로슈어 텍스트를 붙여넣거나 PDF를 올리세요. <b>임상 수치는 슬라이드에 반영되지 않습니다.</b></div>
+      <div class="ref-drop" id="refDrop" onclick="document.getElementById('refFile').click()">
+        <b>PDF 업로드</b> 또는 클릭 · 텍스트는 아래에 붙여넣기
+      </div>
+      <input id="refFile" type="file" accept="application/pdf" style="display:none" onchange="handlePdf(this.files[0])">
+      <div class="ref-status" id="refStatus"></div>
+      <textarea id="refText" placeholder="원료 자료 텍스트를 여기에 붙여넣으세요 (TDS, 브로슈어 등)"></textarea>
+      <div class="ref-extract" id="refExtract"></div>
+      <button class="btn ghost" style="margin-top:8px" onclick="extractFromRef()">참고자료에서 성분 추출 →</button>
+    </div>
+
+    <div class="sec-title">05 · 처방 컨셉 성분</div>
+    <div class="field">
+      <div class="hint">한 줄에 하나씩 원료명만 쳐도 됩니다. 공유 자료와 대조해 기능·출처를 자동으로 채웁니다.</div>
+      <textarea id="actives" oninput="matchActives()" placeholder="Retinyl Palmitate&#10;RETINOLSOME6(LDH)-P&#10;Niacinamide&#10;Adenosine&#10;ON-MEDI LINE"></textarea>
+      <div class="match-list" id="matchList"></div>
+    </div>
+
+    <div class="sec-title">06 · 기능성 분류</div>
+    <div class="field">
+      <div class="radiorow">
+        <label><input type="radio" name="func" value="일반"><span>일반</span></label>
+        <label><input type="radio" name="func" value="단일기능성"><span>단일</span></label>
+        <label><input type="radio" name="func" value="이중기능성" checked><span>이중</span></label>
+      </div>
+    </div>
+
+    <div class="sec-title">07 · 출력 레이아웃</div>
+    <div class="field">
+      <div class="layoutpick">
+        <label><input type="radio" name="layout" value="ALL" checked>ALL<span class="sub">A·B·C</span></label>
+        <label><input type="radio" name="layout" value="A">A<span class="sub">라이프</span></label>
+        <label><input type="radio" name="layout" value="B">B<span class="sub">스펙</span></label>
+        <label><input type="radio" name="layout" value="C">C<span class="sub">스토리</span></label>
+      </div>
+    </div>
+
+    <div class="sec-title">08 · LAB NO</div>
+    <div class="field">
+      <input id="labno" type="text" value="RC-2025-001" placeholder="회사 코드 체계로 교체">
+    </div>
+
+    <button class="btn" onclick="generate()">슬라이드 생성 →</button>
+    <button class="btn ghost" id="inviteBtn" onclick="openInvite()" style="display:none">1회용 초대 링크 발행</button>
+
+    <div class="notice">
+      ⚠ 임상 수치는 <b>원료 자체 데이터</b>로만 표기됩니다. 본 제품 클레임 직접 사용 금지 · 별도 임상 권장.<br>
+      브라우저 안에서만 작동 — 입력 데이터는 서버로 전송되지 않습니다.
+    </div>
+  </div>
+
+  <!-- RIGHT STAGE -->
+  <div class="stage">
+    <div class="stage-head">
+      <h2>미리보기 & 다운로드</h2>
+      <div class="tag">LAYOUT_WIDE · 13.3 × 7.5in</div>
+    </div>
+    <div class="previews" id="previews">
+      <div class="preview-card">
+        <div class="render"><div class="placeholder">brief를 입력하고 <b style="color:var(--orange)">&nbsp;슬라이드 생성&nbsp;</b>을 누르면<br>여기에 A/B/C 미리보기가 나타납니다.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ INVITE MODAL ============ -->
+<div class="invite-modal" id="inviteModal">
+  <div class="invite-box">
+    <h3>1회용 초대 링크</h3>
+    <p>아래 링크를 초대할 사람에게 전달하세요. 상대가 이 링크로 처음 입장하면 코드가 <b>소진</b>되어 재사용할 수 없습니다.</p>
+    <div class="invite-link">
+      <input id="inviteLinkOut" readonly>
+      <button onclick="copyInvite(event)">복사</button>
+    </div>
+    <div class="warn" id="inviteWarn"></div>
+    <button class="close" onclick="closeInvite()">닫기</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   INVITE SYSTEM  (client-side, localStorage-backed)
+   - Owner bootstraps on first visit (no code needed once).
+   - Owner issues one-time codes → shareable ?invite=CODE links.
+   - A code is consumed the first time it successfully enters.
+   NOTE: purely client-side. Good for trusted small-circle use.
+   For hard security (revocation, true single-use across devices)
+   you need a tiny backend — see the notes the studio gave you.
+========================================================= */
+const LS_CODES = 'cl_invite_codes';     // {code: {issued, used, usedAt}}
+const LS_OWNER = 'cl_owner_ok';         // owner unlocked on this device
+const LS_GUEST = 'cl_guest_ok';         // this device already redeemed a code
+
+function loadCodes(){ try{return JSON.parse(localStorage.getItem(LS_CODES))||{}}catch(e){return {}} }
+function saveCodes(c){ localStorage.setItem(LS_CODES, JSON.stringify(c)); }
+function genCode(){ return 'CL-'+Math.random().toString(16).slice(2,10); }
+
+function isOwner(){ return localStorage.getItem(LS_OWNER)==='1'; }
+function isGuestOk(){ return localStorage.getItem(LS_GUEST)==='1'; }
+
+/* Owner first entry: only allowed if no owner exists yet OR already owner on this device */
+function ownerEnter(){
+  localStorage.setItem(LS_OWNER,'1');
+  enterApp('OWNER');
+}
+
+/* Redeem a code (from input or URL) */
+function redeem(code, silent){
+  const codes = loadCodes();
+  const rec = codes[code];
+  const msg = document.getElementById('gateMsg');
+  if(!rec){
+    if(!silent && msg){ msg.className='gate-msg err'; msg.textContent='유효하지 않은 코드입니다.'; }
+    return false;
+  }
+  if(rec.used){
+    if(!silent && msg){ msg.className='gate-msg err'; msg.textContent='이미 사용된 1회용 코드입니다.'; }
+    return false;
+  }
+  rec.used = true; rec.usedAt = Date.now();
+  saveCodes(codes);
+  localStorage.setItem(LS_GUEST,'1');
+  enterApp('GUEST');
+  return true;
+}
+
+function tryEnter(){
+  const code = document.getElementById('inviteInput').value.trim();
+  if(!code){ const m=document.getElementById('gateMsg'); m.className='gate-msg err'; m.textContent='코드를 입력하세요.'; return; }
+  redeem(code, false);
+}
+
+function enterApp(role){
+  document.getElementById('gate').style.display='none';
+  document.getElementById('roleTag').textContent = role;
+  if(role==='OWNER'){
+    document.getElementById('inviteBtn').style.display='block';
+  }
+}
+
+/* Owner issues a new one-time invite */
+function openInvite(){
+  const codes = loadCodes();
+  const code = genCode();
+  codes[code] = { issued: Date.now(), used:false };
+  saveCodes(codes);
+  // build base URL; guard against preview/srcdoc/file contexts where origin is empty
+  let base = location.origin + location.pathname;
+  const out = document.getElementById('inviteLinkOut');
+  const warn = document.getElementById('inviteWarn');
+  if(!location.origin || location.origin==='null' || location.protocol==='blob:' || location.protocol==='data:'){
+    // preview environment: can't produce a real link
+    out.value = code;
+    warn.innerHTML = '⚠ 지금은 미리보기 환경이라 전체 주소가 안 잡힙니다. <b>배포된 실제 주소</b>(예: https://…github.io/저장소/)에서 발행하면 정상 링크가 나옵니다. 위 코드를 직접 전달해도 됩니다: 상대가 <code>주소?invite='+'</code> 뒤에 붙여 입장.';
+  } else {
+    out.value = base + '?invite=' + code;
+    warn.textContent = '※ 클라이언트 저장 방식이라 같은 기기/브라우저에서만 소진 상태가 공유됩니다. 여러 기기에 걸친 완전한 1회성 보장은 백엔드가 필요합니다.';
+  }
+  document.getElementById('inviteModal').classList.add('show');
+}
+function closeInvite(){ document.getElementById('inviteModal').classList.remove('show'); }
+function copyInvite(ev){
+  const el=document.getElementById('inviteLinkOut');
+  el.select(); el.setSelectionRange(0, 99999);
+  let ok=false;
+  try{ if(navigator.clipboard){ navigator.clipboard.writeText(el.value); ok=true; } }catch(e){}
+  if(!ok){ try{ document.execCommand('copy'); ok=true; }catch(e){} }
+  const btn = (ev && ev.currentTarget) ? ev.currentTarget : document.querySelector('.invite-link button');
+  if(btn){ const t=btn.textContent; btn.textContent='복사됨'; setTimeout(()=>btn.textContent=t,1200); }
+}
+
+/* Boot: check URL + prior state */
+(function boot(){
+  const params = new URLSearchParams(location.search);
+  const inviteCode = params.get('invite');
+  // already unlocked on this device?
+  if(isOwner()){ enterApp('OWNER'); return; }
+  if(isGuestOk()){ enterApp('GUEST'); return; }
+  if(inviteCode){
+    // prefill and auto-attempt
+    document.getElementById('inviteInput').value = inviteCode;
+    if(redeem(inviteCode, true)) return;
+    const m=document.getElementById('gateMsg'); m.className='gate-msg err';
+    m.textContent='이 초대 링크는 유효하지 않거나 이미 사용되었습니다.';
+  }
+  // otherwise: gate stays, owner can bootstrap
+})();
+
+/* =========================================================
+   SHARED INGREDIENT DATA  (GitHub JSON, 3-tier fallback)
+   1) ?data=URL param  2) same-folder ingredients.json  3) seed
+========================================================= */
+const SEED_DATA = { ingredients: [
+  {name:"Retinyl Palmitate", aliases:["레티닐팔미테이트","Vitamin A Palmitate"], inci:"Retinyl Palmitate (and) Helianthus Annuus (Sunflower) Seed Oil", mech:"More Stable · Minimal irritation · 사용 함량 0.1-5%", src:"BASF"},
+  {name:"RETINOLSOME6(LDH)-P", aliases:["레티놀좀","RETINOLSOME6"], inci:"레티놀 함유 멀티라멜라 소포", mech:"순수 레티놀 6% LDH 2D-Liposomal System · 산화 안정화 · 피부 친화 침투", src:"H&A PharmaChem"},
+  {name:"MELAZERO V2", aliases:["멜라제로","MELAZERO"], inci:"Eriobotrya Japonica Leaf Extract, Mentha Viridis Extract", mech:"Melanophagy(Autophagy) · Tyrosinase 억제 · 권장 1-3%", src:"TEN"},
+  {name:"ON-MEDI LINE", aliases:["온메디라인","ON-MEDI LINE®","7종 허브"], inci:"Centella·Polygonum·Scutellaria·Camellia·Glycyrrhiza·Chamomilla·Rosmarinus 7종", mech:"Lipoxygenase 억제 · 세포 탈과립 억제 · 항산화 · 권장 2-5%", src:"단정바이오"},
+  {name:"Niacinamide", aliases:["나이아신아마이드","비타민B3"], inci:"Niacinamide", mech:"식약처 고시 미백 기능성 · 권장 2-5%", src:"자체"},
+  {name:"Adenosine", aliases:["아데노신"], inci:"Adenosine", mech:"식약처 고시 주름개선 기능성 · 고시 함량 0.04%", src:"자체"},
+  {name:"D-Panthenol", aliases:["판테놀","Panthenol"], inci:"Panthenol", mech:"보습 · 피부 장벽 강화", src:"자체"},
+]};
+
+let DATA = { ingredients: [] };
+let DATA_INDEX = new Map();   // normalized name/alias -> ingredient
+
+function normKey(s){ return String(s).toLowerCase().replace(/[\s®™()·,.\-]/g,''); }
+function indexData(){
+  DATA_INDEX = new Map();
+  (DATA.ingredients||[]).forEach(it=>{
+    DATA_INDEX.set(normKey(it.name), it);
+    (it.aliases||[]).forEach(a=>DATA_INDEX.set(normKey(a), it));
+  });
+}
+function findIngredient(name){
+  const k=normKey(name);
+  if(DATA_INDEX.has(k)) return DATA_INDEX.get(k);
+  // loose contains-match (either direction) for partial names
+  for(const [key,it] of DATA_INDEX){
+    if(key.length>=4 && (k.includes(key)||key.includes(k))) return it;
+  }
+  return null;
+}
+
+function setDsStatus(cls, msg){
+  const el=document.getElementById('dsStatus');
+  el.className='ds-status '+cls; el.textContent=msg;
+}
+async function loadData(){
+  const params=new URLSearchParams(location.search);
+  const urlParam=params.get('data');
+  const tryUrls=[];
+  if(urlParam) tryUrls.push(urlParam);
+  tryUrls.push('ingredients.json'); // same folder
+  for(const u of tryUrls){
+    try{
+      const r=await fetch(u,{cache:'no-store'});
+      if(!r.ok) continue;
+      const j=await r.json();
+      if(j && Array.isArray(j.ingredients)){
+        DATA=j; indexData();
+        setDsStatus('ok', `✓ 공유 자료 로드됨 · 원료 ${DATA.ingredients.length}종${j.version?' · '+j.version:''}`);
+        matchActives();
+        return;
+      }
+    }catch(e){ /* try next */ }
+  }
+  // fallback: seed
+  DATA=SEED_DATA; indexData();
+  setDsStatus('warn', `⚠ 공유 자료(ingredients.json)를 찾지 못해 내장 기본 자료(${DATA.ingredients.length}종)를 씁니다. GitHub 배포 시 자동 로드됩니다.`);
+  matchActives();
+}
+function reloadData(){
+  const u=document.getElementById('dsUrl').value.trim();
+  if(!u){ loadData(); return; }
+  setDsStatus('loading','자료 불러오는 중…');
+  fetch(u,{cache:'no-store'}).then(r=>r.json()).then(j=>{
+    if(j&&Array.isArray(j.ingredients)){ DATA=j; indexData();
+      setDsStatus('ok',`✓ 주소에서 로드됨 · 원료 ${DATA.ingredients.length}종`); matchActives(); }
+    else throw 0;
+  }).catch(()=>setDsStatus('warn','⚠ 주소에서 유효한 JSON을 읽지 못했습니다. 형식을 확인하세요.'));
+}
+function toggleDsPaste(){
+  const ta=document.getElementById('dsPaste'), btn=document.getElementById('dsPasteBtn');
+  const show=ta.style.display==='none';
+  ta.style.display=show?'block':'none'; btn.style.display=show?'block':'none';
+}
+function loadPasted(){
+  try{
+    const j=JSON.parse(document.getElementById('dsPaste').value);
+    if(!Array.isArray(j.ingredients)) throw 0;
+    DATA=j; indexData();
+    setDsStatus('ok',`✓ 붙여넣은 자료 적용 · 원료 ${DATA.ingredients.length}종`); matchActives();
+  }catch(e){ setDsStatus('warn','⚠ JSON 형식 오류. {"ingredients":[...]} 구조여야 합니다.'); }
+}
+
+/* Live match: read actives lines, check each against shared data */
+function matchActives(){
+  const raw=document.getElementById('actives').value;
+  const list=document.getElementById('matchList');
+  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length){ list.innerHTML=''; return; }
+  list.innerHTML = lines.map(line=>{
+    const name=line.split('|')[0].trim();
+    const hit=findIngredient(name);
+    if(hit){
+      const extra=[];
+      if(hit.concept) extra.push('컨셉: '+hit.concept);
+      if(hit.patent) extra.push('특허 '+hit.patent);
+      if(hit.evidence) extra.push(hit.evidence);
+      return `<div class="match-row hit"><span class="ic">✓</span>
+        <div><span class="mn">${escapeHtml(name)}</span>
+        <span class="mm">${escapeHtml(hit.mech||'')}</span>
+        ${extra.length?`<span class="mm">${escapeHtml(extra.join(' · '))}</span>`:''}
+        ${hit.src?`<span class="ms">${escapeHtml(hit.src)}${hit.strength?' · '+hit.strength:''}</span>`:''}</div></div>`;
+    }
+    return `<div class="match-row miss"><span class="ic">⚠</span>
+      <div><span class="mn">${escapeHtml(name)}</span>
+      <span class="mm">공유 자료에 없음 — 슬라이드엔 이름만 들어갑니다. 04 참고자료로 추가하거나 GitHub 자료에 등록하세요.</span></div></div>`;
+  }).join('');
+}
+
+/* =========================================================
+   REFERENCE MATERIAL  → extract actives, strip clinical numbers
+========================================================= */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+async function handlePdf(file){
+  if(!file) return;
+  const st=document.getElementById('refStatus');
+  if(!window.pdfjsLib){ st.className='ref-status warn'; st.textContent='PDF 리더를 불러오지 못했습니다. 텍스트를 직접 붙여넣어 주세요.'; return; }
+  st.className='ref-status'; st.textContent='PDF 텍스트 추출 중…';
+  try{
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+    let text=''; const pages=Math.min(pdf.numPages,20);
+    for(let p=1;p<=pages;p++){
+      const page=await pdf.getPage(p);
+      const content=await page.getTextContent();
+      text += content.items.map(it=>it.str).join(' ')+'\n';
+    }
+    const clean=text.replace(/\s+/g,' ').trim();
+    if(clean.length<40){ st.className='ref-status warn';
+      st.textContent='이 PDF는 텍스트 추출이 어렵습니다(스캔·이미지형). 자료 텍스트를 직접 붙여넣어 주세요.'; return; }
+    document.getElementById('refText').value=clean;
+    st.className='ref-status ok';
+    st.textContent=`✓ ${pdf.numPages}p 중 ${pages}p 추출 완료. "성분 추출"을 눌러보세요.`;
+  }catch(e){ st.className='ref-status warn'; st.textContent='PDF를 읽지 못했습니다. 텍스트를 직접 붙여넣어 주세요.'; }
+}
+function stripNumbers(s){
+  return s.replace(/[+\-±]?\s*\d+(\.\d+)?\s*%/g,'')
+    .replace(/\d+(\.\d+)?\s*(nm|주|weeks?|일|days?|명|persons?)/gi,'')
+    .replace(/[+\-]\s*\d+(\.\d+)?/g,'').replace(/\s{2,}/g,' ').trim();
+}
+function extractFromRef(){
+  const raw=document.getElementById('refText').value.trim();
+  const box=document.getElementById('refExtract');
+  if(!raw){ box.className='ref-extract show'; box.innerHTML='참고자료 텍스트가 비어 있습니다.'; return; }
+  const found=[]; const seen=new Set();
+  const inciRe=/\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,4}(?:\s+(?:Extract|Oil|Root|Leaf|Seed|Flower|Acid|Retinol|Palmitate|Glycol|Ceramide|Hyaluronate))?)\b/g;
+  let m;
+  while((m=inciRe.exec(raw))!==null){
+    const name=m[1].trim(); if(name.length<6)continue;
+    if(/^(The|This|In|For|And|With|All|No|New|Human|Nature|Company|Research|Report|Clinical|General|Safety|Efficacy|Skin Care|Skin Surface|Wrinkle|Test|Results?|Storage|Note|Vitamin A|Cell)/i.test(name))continue;
+    const key=name.toLowerCase(); if(seen.has(key))continue; seen.add(key); found.push(name);
+  }
+  const tmRe=/([A-Za-z0-9()\-]+(?:\s?[™®]))/g;
+  while((m=tmRe.exec(raw))!==null){
+    const name=m[1].trim(); const key=name.toLowerCase();
+    if(seen.has(key)||name.length<3)continue; seen.add(key); found.unshift(name);
+  }
+  if(!found.length){ box.className='ref-extract show'; box.innerHTML='자동 추출된 원료명이 없습니다. 성분란에 직접 입력해 주세요.'; return; }
+  const top=found.slice(0,8);
+  box.className='ref-extract show';
+  box.innerHTML=`추출된 원료 후보 <b>${top.length}건</b> (수치·임상 제외):<br>`+
+    top.map(n=>'· '+escapeHtml(n)).join('<br>')+
+    `<br><button onclick="pushExtracted()">성분란에 담기</button>`;
+  window._extracted=top;
+}
+function pushExtracted(){
+  if(!window._extracted) return;
+  const ta=document.getElementById('actives');
+  const existing=ta.value.trim();
+  const names=new Set(existing.split('\n').map(l=>l.split('|')[0].trim().toLowerCase()));
+  const add=window._extracted.filter(n=>!names.has(n.toLowerCase()));
+  ta.value=existing?existing+'\n'+add.join('\n'):add.join('\n');
+  ta.style.borderColor='#FF5100'; setTimeout(()=>ta.style.borderColor='',600);
+  matchActives();
+}
+
+/* kick off data load once script is parsed */
+loadData();
+
+/* =========================================================
+   COLOR SYSTEM (BS-13)
+========================================================= */
+const C = {
+  ORANGE:"FF5100", WARMGRAY:"6F6259", BROWN:"502C1E", SKY:"65B2E8",
+  BLACK:"101820", WHITE:"FFFFFF", HIGHLIGHT:"FFE7B3", HAIRLINE:"DDD9D3",
+  BGGRAY:"F5F2ED", BOXGRAY:"EFEAE3", BGORANGE:"FFE7DA",
+};
+const FONT = "Noto Sans KR";
+
+/* =========================================================
+   CONTENT ENGINE — fill every slot from thin input
+========================================================= */
+function parseActives(raw){
+  if(!raw.trim()) return [];
+  return raw.split('\n').map(l=>l.trim()).filter(Boolean).map(line=>{
+    const parts = line.split('|').map(p=>p.trim());
+    let name=parts[0], mech=parts[1]||'', src=parts[2]||'';
+    // enrich from shared data when fields are missing
+    if(!mech || !src){
+      const hit = (typeof findIngredient==='function') ? findIngredient(name) : null;
+      if(hit){
+        if(!mech) mech = hit.mech || '';
+        if(!src)  src  = hit.src || '';
+      }
+    }
+    return {name, mech, src};
+  });
+}
+
+function buildContent(){
+  const brief = document.getElementById('brief').value.trim() || "데일리로 사용 가능한 저자극 안티에이징 크림";
+  const pnameRaw = document.getElementById('pname').value.trim();
+  const actives = parseActives(document.getElementById('actives').value);
+  const func = document.querySelector('input[name=func]:checked').value;
+  const labno = document.getElementById('labno').value.trim() || "LAB-0001";
+
+  // derive name
+  let nameEn = pnameRaw || autoName(brief);
+  let nameKr = pnameRaw ? pnameRaw : autoNameKr(brief);
+
+  // headline
+  const headline = autoHeadline(brief, func);
+
+  // 3 points (from actives or generic)
+  const points = derivePoints(actives, func);
+
+  // RTB steps
+  const rtb = deriveRTB(actives);
+
+  // 4-col header
+  const category = func==='이중기능성' ? '이중기능성 크림' : (func==='단일기능성'?'단일기능성 크림':'일반 크림');
+  const keyActive = actives.length? actives[0].name.split(/[(（]/)[0].trim() : '핵심 액티브';
+  const header = [
+    {label:'LAB NO', value:labno},
+    {label:'CATEGORY', value:category},
+    {label:'KEY ACTIVE', value:keyActive},
+    {label:'PACKAGING', value:'50ml Airless'},
+  ];
+
+  return {nameEn, nameKr, headline, points, rtb, header, actives, func};
+}
+
+function autoName(brief){
+  const b=brief.toLowerCase();
+  let core='Reset', type='Cream';
+  if(b.includes('세럼')||b.includes('serum')||b.includes('앰플')) type='Serum';
+  else if(b.includes('마스크')||b.includes('팩')) type='Mask';
+  else if(b.includes('로션')) type='Lotion';
+  else if(b.includes('토너')||b.includes('스킨')) type='Toner';
+  if(b.includes('레티놀')||b.includes('retinol')) return 'Daily Reset Retinol '+type;
+  if(b.includes('수분')||b.includes('보습')||b.includes('aqua')) return 'Aqua Balance '+type;
+  if(b.includes('미백')||b.includes('브라이트')||b.includes('톤')) return 'Clear Glow '+type;
+  if(b.includes('진정')||b.includes('민감')) return 'Calm Barrier '+type;
+  return 'Signature '+type;
+}
+function autoNameKr(brief){
+  const en=autoName(brief);
+  const map={'Daily Reset Retinol Cream':'데일리 리셋 레티놀 크림','Aqua Balance':'아쿠아 밸런스',
+    'Clear Glow':'클리어 글로우','Calm Barrier':'카밍 배리어','Signature':'시그니처'};
+  for(const k in map){ if(en.startsWith(k)) return map[k]+en.slice(k.length).replace('Cream',' 크림').replace('Serum',' 세럼').replace('Mask',' 마스크').replace('Lotion',' 로션').replace('Toner',' 토너'); }
+  return en;
+}
+function autoHeadline(brief, func){
+  const b=brief.toLowerCase();
+  if(b.includes('저자극')&&(b.includes('레티놀')||b.includes('retinol'))) return '민감한 오늘에도, 매일 쓰는 저자극 레티놀';
+  if(b.includes('수분')||b.includes('보습')) return '하루 종일 촉촉하게, 속부터 채우는 수분 밸런스';
+  if(b.includes('진정')||b.includes('민감')) return '흔들리지 않는 피부, 매일의 진정 케어';
+  if(b.includes('미백')||b.includes('브라이트')||b.includes('톤')) return '한 톤 맑게, 매일 쌓이는 브라이트닝';
+  if(func==='이중기능성') return '미백과 주름개선, 하나로 완성하는 데일리 케어';
+  return '매일의 루틴에 녹아드는, 과학적인 케어';
+}
+function derivePoints(actives, func){
+  const pts=[];
+  if(actives.length>=1){
+    pts.push({title:'핵심 안정화 시스템', desc:`${actives[0].name} — ${actives[0].mech||'핵심 활성 전달'}${actives[0].src?' ('+actives[0].src+')':''}`, kw:[actives[0].name.split(/[(（]/)[0].trim()]});
+  } else {
+    pts.push({title:'핵심 안정화 시스템', desc:'검증된 안정화 캐리어로 활성 성분을 피부에 안정적으로 전달', kw:['안정화']});
+  }
+  if(func==='이중기능성'){
+    pts.push({title:'이중기능성 인증 처방', desc:'나이아신아마이드 2% 미백 고시 + 아데노신 0.04% 주름개선 고시 — 식약처 고시 기능성 원료 듀얼 인증', kw:['나이아신아마이드 2%','아데노신 0.04%']});
+  } else if(func==='단일기능성'){
+    pts.push({title:'단일기능성 인증 처방', desc:'식약처 고시 기능성 원료를 규정 함량으로 배합', kw:['식약처 고시']});
+  } else {
+    pts.push({title:'균형 잡힌 데일리 처방', desc:'자극 최소화와 사용감의 밸런스를 맞춘 데일리 케어 설계', kw:['데일리']});
+  }
+  if(actives.length>=3){
+    pts.push({title:'멀티 액티브 시너지', desc:`${actives[2].name}${actives[2].src?' ('+actives[2].src+')':''} 등 보조 액티브로 효능 시너지 강화`, kw:[actives[2].name.split(/[(（]/)[0].trim()]});
+  } else if(actives.length===2){
+    pts.push({title:'듀얼 액티브 시너지', desc:`${actives[1].name}${actives[1].src?' ('+actives[1].src+')':''} 보조 배합`, kw:[actives[1].name.split(/[(（]/)[0].trim()]});
+  } else {
+    pts.push({title:'진정 · 보습 부스터', desc:'허브 진정 성분과 판테놀로 피부 장벽 강화 및 보습 유지', kw:['진정','보습']});
+  }
+  return pts;
+}
+function deriveRTB(actives){
+  const a0=actives[0], a1=actives[1], a2=actives[2];
+  return [
+    {n:1,title:'안정화',short:a0?`${a0.name.split(/[(（]/)[0].trim()} — ${a0.mech||'활성 안정화'}`:'활성 성분 안정화 캐리어'},
+    {n:2,title:'작용',short:a1?`${a1.name.split(/[(（]/)[0].trim()} — ${a1.mech||'핵심 작용'}`:'핵심 활성 작용 메커니즘'},
+    {n:3,title:'진정',short:a2?`${a2.name.split(/[(（]/)[0].trim()} — ${a2.mech||'진정·보습'}`:'허브 진정 + 판테놀 보습'},
+  ];
+}
+
+/* =========================================================
+   PPTX BUILDER — mirrors the studio's server logic
+========================================================= */
+function addMaster(pres, slide, pageTitle, pageNum){
+  slide.addText(`■ ${pageTitle}`,{x:0.4,y:0.22,w:6.5,h:0.4,fontFace:FONT,fontSize:14,bold:true,color:C.BLACK,margin:0});
+  slide.addText("COSLEAGUER",{x:10.6,y:0.2,w:2.6,h:0.4,fontFace:FONT,fontSize:16,bold:true,color:C.BLACK,align:"right",charSpacing:1,margin:0});
+  slide.addShape(pres.ShapeType.line,{x:0.4,y:0.7,w:12.5,h:0,line:{color:C.ORANGE,width:1.5}});
+  slide.addText("© 2025 COSLEAGUER Co., Ltd. All rights reserved.",{x:0.4,y:7.18,w:5.5,h:0.25,fontFace:FONT,fontSize:8,color:C.WARMGRAY,margin:0});
+  slide.addText("※ 상기 내용은 화장품 법에 의해 검토되지 않았습니다.",{x:6.5,y:7.18,w:5.5,h:0.25,fontFace:FONT,fontSize:8,color:C.WARMGRAY,align:"right",margin:0});
+  slide.addText(String(pageNum),{x:12.7,y:7.18,w:0.5,h:0.25,fontFace:FONT,fontSize:9,color:C.WARMGRAY,align:"right",margin:0});
+}
+function add4Col(pres, slide, x,y,w,items){
+  const colW=w/4;
+  slide.addShape(pres.ShapeType.rect,{x,y,w,h:0.85,fill:{color:C.BGGRAY},line:{color:C.HAIRLINE,width:0.5}});
+  items.forEach((it,i)=>{
+    slide.addText(it.label,{x:x+colW*i+0.08,y:y+0.06,w:colW-0.16,h:0.25,fontFace:FONT,fontSize:8,color:C.WARMGRAY,bold:true,charSpacing:1,margin:0});
+    slide.addText(it.value,{x:x+colW*i+0.08,y:y+0.32,w:colW-0.16,h:0.5,fontFace:FONT,fontSize:10,color:C.BLACK,bold:true,margin:0});
+    if(i>0) slide.addShape(pres.ShapeType.line,{x:x+colW*i,y:y+0.15,w:0,h:0.55,line:{color:C.HAIRLINE,width:0.5}});
+  });
+}
+function numBox(pres, slide, num, x, y){
+  slide.addShape(pres.ShapeType.ellipse,{x,y,w:0.42,h:0.42,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+  slide.addText(String(num),{x,y,w:0.42,h:0.42,fontFace:FONT,fontSize:16,bold:true,color:C.WHITE,align:"center",valign:"middle",margin:0});
+}
+function hi(text, kws){
+  let parts=[{text}];
+  kws.forEach(kw=>{ if(!kw) return; const np=[]; parts.forEach(p=>{ if(p.hl){np.push(p);return;} const t=p.text; const idx=t.indexOf(kw);
+    if(idx===-1){np.push(p);} else { if(idx>0)np.push({text:t.slice(0,idx)}); np.push({text:kw,hl:true}); if(idx+kw.length<t.length)np.push({text:t.slice(idx+kw.length)});}}); parts=np; });
+  return parts;
+}
+
+function buildA(pres, ct){
+  const s=pres.addSlide();
+  addMaster(pres,s,`Layout A — ${ct.nameKr} (Lifestyle)`,1);
+  s.addShape(pres.ShapeType.rect,{x:0.4,y:0.95,w:5.5,h:6.05,fill:{color:C.BGORANGE},line:{color:C.HAIRLINE,width:0.5}});
+  s.addText(`[ 제품 라이프스타일 컷 ]\n\n${ct.header[3].value}\n${ct.nameKr}\n\n※ 사용자 직접 교체 영역`,{x:0.4,y:3.0,w:5.5,h:1.8,fontFace:FONT,fontSize:11,color:C.WARMGRAY,italic:true,align:"center",valign:"middle",margin:0});
+  const sig = ct.nameEn.split(' ').slice(0,2).join(' ');
+  s.addText(sig,{x:0.6,y:6.4,w:5.0,h:0.5,fontFace:FONT,fontSize:26,bold:true,color:C.ORANGE,italic:true,charSpacing:1,margin:0});
+  const RX=6.2,RW=6.7;
+  add4Col(pres,s,RX,0.95,RW,ct.header);
+  s.addText(ct.nameKr,{x:RX,y:2.0,w:RW,h:0.5,fontFace:FONT,fontSize:24,bold:true,color:C.BLACK,margin:0});
+  s.addText(ct.nameEn,{x:RX,y:2.5,w:RW,h:0.35,fontFace:FONT,fontSize:13,color:C.WARMGRAY,italic:true,charSpacing:1,margin:0});
+  s.addShape(pres.ShapeType.rect,{x:RX,y:3.0,w:0.08,h:0.55,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+  s.addText(ct.headline,{x:RX+0.18,y:3.0,w:RW-0.18,h:0.55,fontFace:FONT,fontSize:17,bold:true,color:C.BROWN,valign:"middle",margin:0});
+  let py=3.55;
+  ct.points.forEach((p,i)=>{
+    numBox(pres,s,i+1,RX,py);
+    s.addText(p.title,{x:RX+0.55,y:py-0.02,w:RW-0.55,h:0.3,fontFace:FONT,fontSize:11.5,bold:true,color:C.BLACK,charSpacing:-0.3,margin:0});
+    const runs=hi(p.desc,p.kw).map(r=>({text:r.text,options:{fontFace:FONT,fontSize:9,color:C.WARMGRAY,highlight:r.hl?C.HIGHLIGHT:undefined,bold:!!r.hl}}));
+    s.addText(runs,{x:RX+0.55,y:py+0.28,w:RW-0.55,h:0.5,charSpacing:-0.3,margin:0});
+    py+=0.78;
+  });
+  s.addShape(pres.ShapeType.roundRect,{x:RX,y:py,w:1.2,h:0.3,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0},rectRadius:0.15});
+  s.addText("RTB",{x:RX,y:py,w:1.2,h:0.3,fontFace:FONT,fontSize:10.5,bold:true,color:C.WHITE,align:"center",valign:"middle",charSpacing:2,margin:0});
+  const ry=py+0.4;
+  s.addShape(pres.ShapeType.rect,{x:RX,y:ry,w:RW,h:1.1,fill:{color:C.BOXGRAY},line:{color:C.HAIRLINE,width:0.5}});
+  const sw=(RW-0.2)/3;
+  ct.rtb.forEach((st,i)=>{
+    const sx=RX+0.1+sw*i;
+    s.addText(`STEP ${st.n}`,{x:sx+0.08,y:ry+0.1,w:sw-0.16,h:0.2,fontFace:FONT,fontSize:7.5,bold:true,color:C.ORANGE,charSpacing:1.2,margin:0});
+    s.addText(st.title,{x:sx+0.08,y:ry+0.28,w:sw-0.16,h:0.25,fontFace:FONT,fontSize:10.5,bold:true,color:C.BLACK,charSpacing:-0.2,margin:0});
+    s.addText(st.short,{x:sx+0.08,y:ry+0.55,w:sw-0.16,h:0.5,fontFace:FONT,fontSize:8,color:C.WARMGRAY,charSpacing:-0.2,margin:0});
+    if(i<2) s.addText("›",{x:sx+sw-0.12,y:ry+0.32,w:0.2,h:0.4,fontFace:FONT,fontSize:20,color:C.ORANGE,bold:true,align:"center",valign:"middle",margin:0});
+  });
+}
+
+function buildB(pres, ct){
+  const s=pres.addSlide();
+  addMaster(pres,s,`Layout B — ${ct.nameKr} (Spec)`,2);
+  add4Col(pres,s,0.4,0.95,12.5,ct.header);
+  s.addText(ct.nameKr,{x:0.4,y:2.0,w:7.5,h:0.5,fontFace:FONT,fontSize:22,bold:true,color:C.BLACK,margin:0});
+  s.addText(ct.nameEn,{x:0.4,y:2.5,w:7.5,h:0.3,fontFace:FONT,fontSize:12,color:C.WARMGRAY,italic:true,charSpacing:1,margin:0});
+  s.addShape(pres.ShapeType.rect,{x:0.4,y:2.95,w:0.08,h:0.45,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+  s.addText(ct.headline,{x:0.55,y:2.95,w:7.4,h:0.45,fontFace:FONT,fontSize:15,bold:true,color:C.BROWN,valign:"middle",margin:0});
+  s.addShape(pres.ShapeType.rect,{x:8.2,y:2.0,w:4.7,h:1.4,fill:{color:C.BGORANGE},line:{color:C.HAIRLINE,width:0.5}});
+  s.addText("[ 제품 컷 ]\n사용자 직접 교체",{x:8.2,y:2.0,w:4.7,h:1.4,fontFace:FONT,fontSize:10,color:C.WARMGRAY,italic:true,align:"center",valign:"middle",margin:0});
+  s.addText("CONCEPT ACTIVES",{x:0.4,y:3.6,w:7.5,h:0.3,fontFace:FONT,fontSize:10,bold:true,color:C.ORANGE,charSpacing:2,margin:0});
+  const hcell=(t)=>({text:t,options:{bold:true,color:C.WHITE,fill:{color:C.BLACK},fontFace:FONT,fontSize:9,align:"center",valign:"middle"}});
+  const rows=[[hcell("원료"),hcell("기능 / 메커니즘"),hcell("출처")]];
+  const acts = ct.actives.length? ct.actives : [{name:'핵심 액티브',mech:'활성 전달',src:''}];
+  acts.slice(0,6).forEach(a=>{
+    rows.push([
+      {text:a.name,options:{bold:true,fontFace:FONT,fontSize:8.5,color:C.BLACK,valign:"middle"}},
+      {text:a.mech||'—',options:{fontFace:FONT,fontSize:8.5,color:C.WARMGRAY,valign:"middle"}},
+      {text:a.src||'추정 (검수 필요)',options:{fontFace:FONT,fontSize:8.5,color:a.src?C.WARMGRAY:C.ORANGE,valign:"middle"}},
+    ]);
+  });
+  s.addTable(rows,{x:0.4,y:3.95,w:7.5,colW:[2.4,3.4,1.7],rowH:0.36,border:{type:"solid",pt:0.5,color:C.HAIRLINE},fontFace:FONT});
+  s.addText("INGREDIENT SYNERGY",{x:8.2,y:3.6,w:4.7,h:0.3,fontFace:FONT,fontSize:10,bold:true,color:C.ORANGE,charSpacing:2,margin:0});
+  const by=3.95,bh=0.85,bg=0.08;
+  ct.rtb.forEach((st,i)=>{
+    const sy=by+(bh+bg)*i;
+    s.addShape(pres.ShapeType.rect,{x:8.2,y:sy,w:4.7,h:bh,fill:{color:C.BOXGRAY},line:{color:C.HAIRLINE,width:0.5}});
+    s.addShape(pres.ShapeType.rect,{x:8.2,y:sy,w:0.08,h:bh,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+    numBox(pres,s,st.n,8.4,sy+0.18);
+    s.addText(st.title,{x:8.95,y:sy+0.13,w:3.85,h:0.32,fontFace:FONT,fontSize:11.5,bold:true,color:C.BLACK,charSpacing:-0.3,margin:0});
+    s.addText(st.short,{x:8.95,y:sy+0.45,w:3.85,h:0.4,fontFace:FONT,fontSize:8,color:C.WARMGRAY,charSpacing:-0.3,margin:0});
+  });
+  s.addShape(pres.ShapeType.rect,{x:0.4,y:6.7,w:12.5,h:0.32,fill:{color:C.BGGRAY},line:{color:C.HAIRLINE,width:0.5}});
+  s.addText("COMPLIANCE",{x:0.5,y:6.7,w:1.5,h:0.32,fontFace:FONT,fontSize:8,bold:true,color:C.ORANGE,valign:"middle",charSpacing:1.5,margin:0});
+  const comp = ct.func==='이중기능성' ? "KR ✓ 이중기능성  ·  CN △ 신원료 검토  ·  JP ✓  ·  EU ✓  ·  US ✓   (※ 사용자 RA 검수 권장)" : "KR ✓  ·  CN △ 신원료 검토  ·  JP ✓  ·  EU ✓  ·  US ✓   (※ 사용자 RA 검수 권장)";
+  s.addText(comp,{x:2.0,y:6.7,w:10.8,h:0.32,fontFace:FONT,fontSize:9,color:C.WARMGRAY,valign:"middle",margin:0});
+}
+
+function buildC(pres, ct){
+  const s=pres.addSlide();
+  addMaster(pres,s,`Layout C — ${ct.nameKr} (Story)`,3);
+  s.addText(ct.nameEn.toUpperCase(),{x:0.4,y:1.0,w:8.0,h:0.32,fontFace:FONT,fontSize:11,color:C.ORANGE,bold:true,charSpacing:4,margin:0});
+  s.addText(ct.nameKr,{x:0.4,y:1.35,w:8.0,h:0.7,fontFace:FONT,fontSize:32,bold:true,color:C.BLACK,charSpacing:-0.5,margin:0});
+  s.addText(ct.headline,{x:0.4,y:2.1,w:8.0,h:0.5,fontFace:FONT,fontSize:16,color:C.BROWN,italic:true,charSpacing:-0.3,margin:0});
+  s.addShape(pres.ShapeType.rect,{x:9.0,y:0.95,w:3.9,h:1.85,fill:{color:C.BGORANGE},line:{color:C.HAIRLINE,width:0.5}});
+  s.addText("[ 히어로 컷 ]\n사용자 교체",{x:9.0,y:0.95,w:3.9,h:1.85,fontFace:FONT,fontSize:10,color:C.WARMGRAY,italic:true,align:"center",valign:"middle",margin:0});
+  add4Col(pres,s,0.4,2.85,12.5,ct.header);
+  s.addShape(pres.ShapeType.roundRect,{x:0.4,y:3.85,w:1.2,h:0.3,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0},rectRadius:0.15});
+  s.addText("RTB",{x:0.4,y:3.85,w:1.2,h:0.3,fontFace:FONT,fontSize:10.5,bold:true,color:C.WHITE,align:"center",valign:"middle",charSpacing:2,margin:0});
+  s.addText("Active Synergy System",{x:1.7,y:3.85,w:8.0,h:0.3,fontFace:FONT,fontSize:11.5,bold:true,color:C.BLACK,valign:"middle",margin:0});
+  const boxW=2.7,boxH=1.35;
+  const g0=ct.rtb[0], g1=ct.rtb[2], g2=ct.rtb[1];
+  const p0=ct.points[0], p1=ct.points[2], p2=ct.points[1];
+  const grid=[
+    {x:0.4,y:4.3,label:"STABILIZE",title:p0.title,body:p0.desc},
+    {x:0.4,y:5.78,label:"SUPPORT",title:p2.title,body:p2.desc},
+    {x:9.95,y:4.3,label:"ACT",title:(ct.rtb[1].title),body:ct.rtb[1].short},
+    {x:9.95,y:5.78,label:"FUNCTIONAL",title:p1.title,body:p1.desc},
+  ];
+  const cx=6.65,cy=5.4;
+  s.addShape(pres.ShapeType.ellipse,{x:cx-0.85,y:cy-0.85,w:1.7,h:1.7,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+  const initials = ct.nameEn.split(' ').slice(0,2).join('\n').toUpperCase();
+  s.addText(initials,{x:cx-0.85,y:cy-0.85,w:1.7,h:1.7,fontFace:FONT,fontSize:14,bold:true,color:C.WHITE,align:"center",valign:"middle",charSpacing:1,margin:0});
+  grid.forEach(g=>{
+    s.addShape(pres.ShapeType.rect,{x:g.x,y:g.y,w:boxW,h:boxH,fill:{color:C.BOXGRAY},line:{color:C.HAIRLINE,width:0.5}});
+    s.addShape(pres.ShapeType.rect,{x:g.x,y:g.y,w:boxW,h:0.08,fill:{color:C.ORANGE},line:{color:C.ORANGE,width:0}});
+    s.addText(g.label,{x:g.x+0.15,y:g.y+0.16,w:boxW-0.3,h:0.22,fontFace:FONT,fontSize:7.5,bold:true,color:C.ORANGE,charSpacing:2,margin:0});
+    s.addText(g.title,{x:g.x+0.15,y:g.y+0.38,w:boxW-0.3,h:0.32,fontFace:FONT,fontSize:12,bold:true,color:C.BLACK,charSpacing:-0.3,margin:0});
+    s.addText(g.body,{x:g.x+0.15,y:g.y+0.72,w:boxW-0.3,h:0.55,fontFace:FONT,fontSize:8.5,color:C.WARMGRAY,charSpacing:-0.2,margin:0});
+  });
+  s.addShape(pres.ShapeType.line,{x:3.1,y:4.97,w:2.7,h:0.43,line:{color:C.HAIRLINE,width:1,dashType:"dash"}});
+  s.addShape(pres.ShapeType.line,{x:3.1,y:6.45,w:2.7,h:-1.05,line:{color:C.HAIRLINE,width:1,dashType:"dash"}});
+  s.addShape(pres.ShapeType.line,{x:7.5,y:5.4,w:2.45,h:-0.43,line:{color:C.HAIRLINE,width:1,dashType:"dash"}});
+  s.addShape(pres.ShapeType.line,{x:7.5,y:5.4,w:2.45,h:1.05,line:{color:C.HAIRLINE,width:1,dashType:"dash"}});
+}
+
+/* =========================================================
+   HTML PREVIEW MIRROR (fast visual, not the pptx itself)
+========================================================= */
+function previewHTML(ct, layout){
+  // scaled mini renders using absolute positioning in em (font-size on .mini controls scale)
+  // 13.3in x 7.5in → use 1in = 5.4em baseline
+  const IN=5.4;
+  const px=(v)=>`${v*IN}em`;
+  function box(x,y,w,h,style){return `<div style="position:absolute;left:${px(x)};top:${px(y)};width:${px(w)};height:${px(h)};${style}"></div>`}
+  function txt(x,y,w,content,style){return `<div style="position:absolute;left:${px(x)};top:${px(y)};width:${px(w)};${style}">${content}</div>`}
+  const master=(title,num)=>`
+    ${txt(0.4,0.22,8,`■ ${escapeHtml(title)}`,`font-weight:700;font-size:${0.14*IN}em;color:#101820`)}
+    ${txt(9.5,0.2,3.4,'COSLEAGUER',`text-align:right;font-weight:700;font-size:${0.16*IN}em;color:#101820;letter-spacing:0.05em`)}
+    ${box(0.4,0.7,12.5,0.018,'background:#FF5100')}
+    ${txt(0.4,7.18,5,'© 2025 COSLEAGUER Co., Ltd.',`font-size:${0.08*IN}em;color:#6F6259`)}
+    ${txt(8,7.18,4.9,'※ 화장품 법 미검토',`text-align:right;font-size:${0.08*IN}em;color:#6F6259`)}
+    ${txt(12.7,7.18,0.5,num,`text-align:right;font-size:${0.09*IN}em;color:#6F6259`)}`;
+  const col4=(x,y,w,items)=>{
+    const cw=w/4;
+    let h=box(x,y,w,0.85,'background:#F5F2ED;border:0.4px solid #DDD9D3');
+    items.forEach((it,i)=>{
+      h+=txt(x+cw*i+0.08,y+0.06,cw-0.16,escapeHtml(it.label),`font-size:${0.08*IN}em;color:#6F6259;font-weight:700;letter-spacing:0.03em`);
+      h+=txt(x+cw*i+0.08,y+0.32,cw-0.16,escapeHtml(it.value),`font-size:${0.10*IN}em;color:#101820;font-weight:700;line-height:1.15`);
+    });
+    return h;
+  };
+  const numB=(n,x,y)=>box(x,y,0.42,0.42,'background:#FF5100;border-radius:50%')+
+    txt(x,y+0.06,0.42,n,`text-align:center;font-weight:700;font-size:${0.16*IN}em;color:#fff`);
+
+  let inner='';
+  if(layout==='A'){
+    inner=master(`Layout A — ${ct.nameKr}`,'1');
+    inner+=box(0.4,0.95,5.5,6.05,'background:#FFE7DA;border:0.4px solid #DDD9D3');
+    inner+=txt(0.4,3.4,5.5,`[ 제품 컷 ]<br>사용자 교체`,`text-align:center;font-style:italic;color:#6F6259;font-size:${0.11*IN}em;line-height:1.6`);
+    inner+=txt(0.6,6.4,5,escapeHtml(ct.nameEn.split(' ').slice(0,2).join(' ')),`font-style:italic;font-weight:700;font-size:${0.26*IN}em;color:#FF5100`);
+    const RX=6.2,RW=6.7;
+    inner+=col4(RX,0.95,RW,ct.header);
+    inner+=txt(RX,2.0,RW,escapeHtml(ct.nameKr),`font-weight:700;font-size:${0.24*IN}em;color:#101820`);
+    inner+=txt(RX,2.55,RW,escapeHtml(ct.nameEn),`font-style:italic;font-size:${0.13*IN}em;color:#6F6259`);
+    inner+=box(RX,3.0,0.08,0.55,'background:#FF5100');
+    inner+=txt(RX+0.2,3.08,RW-0.2,escapeHtml(ct.headline),`font-weight:700;font-size:${0.17*IN}em;color:#502C1E;line-height:1.2`);
+    let py=3.55;
+    ct.points.forEach((p,i)=>{
+      inner+=numB(i+1,RX,py);
+      inner+=txt(RX+0.55,py,RW-0.55,escapeHtml(p.title),`font-weight:700;font-size:${0.115*IN}em;color:#101820`);
+      inner+=txt(RX+0.55,py+0.28,RW-0.55,hiHTML(p.desc,p.kw),`font-size:${0.09*IN}em;color:#6F6259;line-height:1.35`);
+      py+=0.78;
+    });
+    inner+=box(RX,py,1.2,0.3,'background:#FF5100;border-radius:0.14em');
+    inner+=txt(RX,py+0.05,1.2,'RTB',`text-align:center;font-weight:700;font-size:${0.105*IN}em;color:#fff;letter-spacing:0.1em`);
+    const ry=py+0.4;
+    inner+=box(RX,ry,RW,1.1,'background:#EFEAE3;border:0.4px solid #DDD9D3');
+    const sw=(RW-0.2)/3;
+    ct.rtb.forEach((st,i)=>{
+      const sx=RX+0.1+sw*i;
+      inner+=txt(sx+0.08,ry+0.1,sw-0.16,`STEP ${st.n}`,`font-weight:700;font-size:${0.075*IN}em;color:#FF5100;letter-spacing:0.08em`);
+      inner+=txt(sx+0.08,ry+0.28,sw-0.16,escapeHtml(st.title),`font-weight:700;font-size:${0.105*IN}em;color:#101820`);
+      inner+=txt(sx+0.08,ry+0.55,sw-0.16,escapeHtml(st.short),`font-size:${0.08*IN}em;color:#6F6259;line-height:1.3`);
+      if(i<2) inner+=txt(sx+sw-0.14,ry+0.42,0.2,'›',`font-size:${0.2*IN}em;color:#FF5100;font-weight:700`);
+    });
+  }
+  else if(layout==='B'){
+    inner=master(`Layout B — ${ct.nameKr}`,'2');
+    inner+=col4(0.4,0.95,12.5,ct.header);
+    inner+=txt(0.4,2.0,7.5,escapeHtml(ct.nameKr),`font-weight:700;font-size:${0.22*IN}em;color:#101820`);
+    inner+=txt(0.4,2.55,7.5,escapeHtml(ct.nameEn),`font-style:italic;font-size:${0.12*IN}em;color:#6F6259`);
+    inner+=box(0.4,2.95,0.08,0.45,'background:#FF5100');
+    inner+=txt(0.55,3.0,7.4,escapeHtml(ct.headline),`font-weight:700;font-size:${0.15*IN}em;color:#502C1E`);
+    inner+=box(8.2,2.0,4.7,1.4,'background:#FFE7DA;border:0.4px solid #DDD9D3');
+    inner+=txt(8.2,2.55,4.7,'[ 제품 컷 ]',`text-align:center;font-style:italic;color:#6F6259;font-size:${0.10*IN}em`);
+    inner+=txt(0.4,3.6,7.5,'CONCEPT ACTIVES',`font-weight:700;font-size:${0.10*IN}em;color:#FF5100;letter-spacing:0.1em`);
+    // table
+    const acts=ct.actives.length?ct.actives:[{name:'핵심 액티브',mech:'활성 전달',src:''}];
+    let ty=3.95; const rh=0.36;
+    inner+=box(0.4,ty,7.5,rh,'background:#101820');
+    inner+=txt(0.5,ty+0.09,2.3,'원료',`color:#fff;font-weight:700;font-size:${0.085*IN}em`);
+    inner+=txt(2.9,ty+0.09,3.3,'기능 / 메커니즘',`color:#fff;font-weight:700;font-size:${0.085*IN}em`);
+    inner+=txt(6.3,ty+0.09,1.5,'출처',`color:#fff;font-weight:700;font-size:${0.085*IN}em`);
+    ty+=rh;
+    acts.slice(0,6).forEach((a,i)=>{
+      inner+=box(0.4,ty,7.5,rh,`background:${i%2?'#F5F2ED':'#fff'};border-bottom:0.4px solid #DDD9D3`);
+      inner+=txt(0.5,ty+0.09,2.3,escapeHtml(a.name),`font-weight:700;font-size:${0.08*IN}em;color:#101820;line-height:1.1`);
+      inner+=txt(2.9,ty+0.09,3.3,escapeHtml(a.mech||'—'),`font-size:${0.08*IN}em;color:#6F6259;line-height:1.1`);
+      inner+=txt(6.3,ty+0.09,1.5,escapeHtml(a.src||'추정'),`font-size:${0.08*IN}em;color:${a.src?'#6F6259':'#FF5100'};line-height:1.1`);
+      ty+=rh;
+    });
+    inner+=txt(8.2,3.6,4.7,'INGREDIENT SYNERGY',`font-weight:700;font-size:${0.10*IN}em;color:#FF5100;letter-spacing:0.1em`);
+    const by=3.95,bh=0.85,bg=0.08;
+    ct.rtb.forEach((st,i)=>{
+      const sy=by+(bh+bg)*i;
+      inner+=box(8.2,sy,4.7,bh,'background:#EFEAE3;border:0.4px solid #DDD9D3');
+      inner+=box(8.2,sy,0.08,bh,'background:#FF5100');
+      inner+=numB(st.n,8.4,sy+0.18);
+      inner+=txt(8.95,sy+0.16,3.85,escapeHtml(st.title),`font-weight:700;font-size:${0.115*IN}em;color:#101820`);
+      inner+=txt(8.95,sy+0.48,3.85,escapeHtml(st.short),`font-size:${0.08*IN}em;color:#6F6259;line-height:1.3`);
+    });
+    inner+=box(0.4,6.7,12.5,0.32,'background:#F5F2ED;border:0.4px solid #DDD9D3');
+    inner+=txt(0.5,6.78,1.5,'COMPLIANCE',`font-weight:700;font-size:${0.08*IN}em;color:#FF5100;letter-spacing:0.05em`);
+    const comp=ct.func==='이중기능성'?"KR ✓ 이중기능성 · CN △ 신원료 검토 · JP ✓ · EU ✓ · US ✓ (RA 검수 권장)":"KR ✓ · CN △ · JP ✓ · EU ✓ · US ✓ (RA 검수 권장)";
+    inner+=txt(2.0,6.78,10.8,comp,`font-size:${0.09*IN}em;color:#6F6259`);
+  }
+  else { // C
+    inner=master(`Layout C — ${ct.nameKr}`,'3');
+    inner+=txt(0.4,1.0,8,escapeHtml(ct.nameEn.toUpperCase()),`font-weight:700;font-size:${0.11*IN}em;color:#FF5100;letter-spacing:0.25em`);
+    inner+=txt(0.4,1.35,8,escapeHtml(ct.nameKr),`font-weight:900;font-size:${0.32*IN}em;color:#101820`);
+    inner+=txt(0.4,2.15,8,escapeHtml(ct.headline),`font-style:italic;font-size:${0.16*IN}em;color:#502C1E`);
+    inner+=box(9.0,0.95,3.9,1.85,'background:#FFE7DA;border:0.4px solid #DDD9D3');
+    inner+=txt(9.0,1.7,3.9,'[ 히어로 컷 ]',`text-align:center;font-style:italic;color:#6F6259;font-size:${0.10*IN}em`);
+    inner+=col4(0.4,2.85,12.5,ct.header);
+    inner+=box(0.4,3.85,1.2,0.3,'background:#FF5100;border-radius:0.14em');
+    inner+=txt(0.4,3.9,1.2,'RTB',`text-align:center;font-weight:700;font-size:${0.105*IN}em;color:#fff;letter-spacing:0.1em`);
+    inner+=txt(1.75,3.9,8,'Active Synergy System',`font-weight:700;font-size:${0.115*IN}em;color:#101820`);
+    const p0=ct.points[0],p1=ct.points[2],p2=ct.points[1];
+    const grid=[
+      {x:0.4,y:4.3,label:"STABILIZE",title:p0.title,body:p0.desc},
+      {x:0.4,y:5.78,label:"SUPPORT",title:p2.title,body:p2.desc},
+      {x:9.95,y:4.3,label:"ACT",title:ct.rtb[1].title,body:ct.rtb[1].short},
+      {x:9.95,y:5.78,label:"FUNCTIONAL",title:p1.title,body:p1.desc},
+    ];
+    const cx=6.65,cy=5.4;
+    inner+=box(cx-0.85,cy-0.85,1.7,1.7,'background:#FF5100;border-radius:50%');
+    inner+=txt(cx-0.85,cy-0.5,1.7,escapeHtml(ct.nameEn.split(' ').slice(0,2).join(' ').toUpperCase()),`text-align:center;font-weight:700;font-size:${0.13*IN}em;color:#fff;line-height:1.2`);
+    grid.forEach(g=>{
+      inner+=box(g.x,g.y,2.7,1.35,'background:#EFEAE3;border:0.4px solid #DDD9D3');
+      inner+=box(g.x,g.y,2.7,0.08,'background:#FF5100');
+      inner+=txt(g.x+0.15,g.y+0.16,2.4,escapeHtml(g.label),`font-weight:700;font-size:${0.075*IN}em;color:#FF5100;letter-spacing:0.1em`);
+      inner+=txt(g.x+0.15,g.y+0.38,2.4,escapeHtml(g.title),`font-weight:700;font-size:${0.12*IN}em;color:#101820;line-height:1.1`);
+      inner+=txt(g.x+0.15,g.y+0.72,2.4,escapeHtml(g.body),`font-size:${0.085*IN}em;color:#6F6259;line-height:1.25`);
+    });
+  }
+  return `<div class="mini">${inner}</div>`;
+}
+function escapeHtml(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function hiHTML(text,kws){
+  let out=escapeHtml(text);
+  kws.forEach(kw=>{ if(!kw)return; out=out.split(escapeHtml(kw)).join(`<span style="background:#FFE7B3;font-weight:700">${escapeHtml(kw)}</span>`);});
+  return out;
+}
+
+/* =========================================================
+   ORCHESTRATION
+========================================================= */
+let lastContent=null;
+function generate(){
+  const ct=buildContent();
+  lastContent=ct;
+  const layout=document.querySelector('input[name=layout]:checked').value;
+  const which = layout==='ALL'?['A','B','C']:[layout];
+  const names={A:'Layout A · 라이프스타일',B:'Layout B · 스펙 중심',C:'Layout C · 스토리텔링'};
+  const container=document.getElementById('previews');
+  container.innerHTML='';
+  which.forEach(L=>{
+    const card=document.createElement('div');
+    card.className='preview-card';
+    card.innerHTML=`<div class="cap"><span class="name">${names[L]}</span>
+      <button class="dl" onclick="downloadOne('${L}')">.pptx 다운로드</button></div>
+      <div class="render">${previewHTML(ct,L)}</div>`;
+    container.appendChild(card);
+  });
+  // add "download all" if ALL
+  if(layout==='ALL'){
+    const bar=document.createElement('button');
+    bar.className='btn'; bar.style.marginTop='4px';
+    bar.textContent='A · B · C 한 파일로 다운로드';
+    bar.onclick=()=>downloadAll();
+    container.appendChild(bar);
+  }
+}
+
+function newPres(){
+  const p=new PptxGenJS();
+  p.defineLayout({name:'CL_WIDE',width:13.3,height:7.5});
+  p.layout='CL_WIDE';
+  p.author='COSLEAGUER'; p.title='Concept Slide';
+  return p;
+}
+function downloadOne(L){
+  if(!lastContent) return;
+  const p=newPres();
+  if(L==='A')buildA(p,lastContent); if(L==='B')buildB(p,lastContent); if(L==='C')buildC(p,lastContent);
+  p.writeFile({fileName:`${lastContent.nameEn.replace(/\s+/g,'_')}_Layout${L}.pptx`});
+}
+function downloadAll(){
+  if(!lastContent) return;
+  const p=newPres();
+  buildA(p,lastContent); buildB(p,lastContent); buildC(p,lastContent);
+  p.writeFile({fileName:`${lastContent.nameEn.replace(/\s+/g,'_')}_ABC.pptx`});
+}
+</script>
+</body>
+</html>
